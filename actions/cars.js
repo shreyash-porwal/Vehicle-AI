@@ -1,9 +1,11 @@
+"use server";
 import { db } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { v4 as uuidv4 } from "uuid";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase";
+import { revalidatePath } from "next/cache";
 async function fileToBase64(file) {
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
