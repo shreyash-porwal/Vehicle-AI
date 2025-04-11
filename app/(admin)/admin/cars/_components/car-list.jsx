@@ -16,7 +16,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import useFetch from '@/hooks/use-fetch'
-import { formatCurrency } from '@/lib/helper'
+// import { formatCurrency } from '@/lib/helper'
 import { CarIcon, Eye, Loader2, MoreHorizontal, Plus, Search, Star, StarOff, Trash2 } from 'lucide-react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -180,7 +180,8 @@ const CarsList = () => {
                                             </TableCell>
                                             <TableCell>{car.make} {car.model}</TableCell>
                                             <TableCell>{car.year}</TableCell>
-                                            <TableCell>{formatCurrency(car.price)}</TableCell>
+                                            {/* <TableCell>{formatCurrency(car.price)}</TableCell> */}
+                                            <TableCell>{car.price}</TableCell>
                                             <TableCell>{getStatusBadge(car.status)}</TableCell>
                                             <TableCell>
                                                 <Button

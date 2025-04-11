@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect } from "react";
 import { Input } from "./ui/input";
 import { useState } from "react";
 import { Camera, Search, Upload } from "lucide-react";
@@ -7,8 +7,24 @@ import { Button } from "./ui/button";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import useFetch from "@/hooks/use-fetch";
+import { getFeaturedCars, processImageSearch } from "@/actions/home";
 const HomeSearch = () => {
+  const [searchImage, setSearchImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isImageSearchActive, setIsImageSearchActive] = useState("");
+
   const router = useRouter();
+
+  const { loading: isProcessing,
+    fn: processImageFn,
+    data: processResult,
+    error: processError
+  } = useFetch(processImageSearch);
+
+
   const handleTextSearch = (e) => {
     e.preventDefault();
     if (!searchTerm) {
@@ -17,17 +33,14 @@ const HomeSearch = () => {
     }
     router.push(`/cars?search=${encodeURIComponent(searchTerm)}`);
   };
+
   const handleImageSearch = async (e) => {
     e.preventDefault();
     if (!searchImage) {
       toast.error("Please upload image first");
     }
+    await processImageFn(searchImage);
   };
-  const [searchImage, setSearchImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState("");
-  const [isUploading, setIsUploading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isImageSearchActive, setIsImageSearchActive] = useState("");
 
   const onDrop = (acceptedFiles) => {
     const file = acceptedFiles[0];
@@ -51,6 +64,7 @@ const HomeSearch = () => {
       reader.readAsDataURL(file);
     }
   };
+
   const { getRootProps, getInputProps, isDragActive, isDragReject } =
     useDropzone({
       onDrop,
@@ -59,6 +73,25 @@ const HomeSearch = () => {
       },
       maxFiles: 1,
     });
+
+  useEffect(() => {
+    if (processError) {
+      toast.error("Failed to analyze image : " + (processError.message || "Unknown error"));
+    }
+  }, [processError]);
+
+
+  useEffect(() => {
+    if (processResult?.success) {
+      const params = new URLSearchParams();
+      if (processResult.data.make) params.set("make", processResult.data.make);
+      if (processResult.data.bodyType) params.set("bodyType", processResult.data.bodyType);
+      if (processResult.data.color) params.set("color", processResult.data.color);
+
+      router.push(`/cars?${params.toString()}`);
+    }
+  }, [processResult]);
+
   return (
     <div>
       <form onSubmit={handleTextSearch}>
@@ -138,9 +171,9 @@ const HomeSearch = () => {
               <Button
                 type="submit"
                 className="w-full mt-2"
-                disabled={isUploading}
+                disabled={isUploading || isProcessing}
               >
-                {isUploading ? "Uploading..." : "Search with this Image"}
+                {isUploading ? "Uploading..." : isProcessing ? "Analyzing Image..." : "Search with this Image"}
               </Button>
             )}
           </form>

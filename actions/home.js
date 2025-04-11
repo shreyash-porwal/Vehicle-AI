@@ -1,6 +1,7 @@
 "use server";
 
-import { serializedCarData } from "@/lib/helper";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import aj from "@/lib/arcjet";
 import { db } from "@/lib/prisma";
 import { request } from "@arcjet/next";
 
@@ -10,9 +11,19 @@ async function fileToBase64(file) {
   return buffer.toString("base64");
 }
 
+// Function to serialize car data
+function serializeCarData(car) {
+  return {
+    ...car,
+    price: car.price ? parseFloat(car.price.toString()) : 0,
+    createdAt: car.createdAt?.toISOString(),
+    updatedAt: car.updatedAt?.toISOString(),
+  };
+}
+
 export async function getFeaturedCars(limit = 3) {
   try {
-    const cars = await db.cars.findMany({
+    const cars = await db.car.findMany({
       where: {
         featured: true,
         status: "AVAILABLE",
@@ -21,11 +32,12 @@ export async function getFeaturedCars(limit = 3) {
       orderBy: { createdAt: "desc" },
     });
 
-    return cars.map(serializedCarData);
+    return cars.map(serializeCarData);
   } catch (error) {
-    throw new Error("Error fetching cars: " + error.message);
+    throw new Error("Error fetching featured cars:" + error.message);
   }
 }
+
 
 export async function processImageSearch(file) {
   try {
@@ -67,30 +79,16 @@ export async function processImageSearch(file) {
 
     // Define the prompt for car detail extraction
     const prompt = `
-     Analyze this car image and extract the following information:
+     Analyze this car image and extract the following information for a search query:
      1. Make (manufacturer)
-     2. Model
-     3. Year (approximately)
-     4. Color
-     5. Body type (SUV, Sedan, Hatchback, etc.)
-     6. Mileage
-     7. Fuel type (your best guess)
-     8. Transmission type (your best guess)
-     9. Price (your best guess)
-     9. Short Description as to be added to a car listing
-
+     2. Body type (SUV, Sedan, Hatchback, etc.)
+     3. Color
+     
      Format your response as a clean JSON object with these fields:
      {
        "make": "",
-       "model": "",
-       "year": 0000,
-       "color": "",
-       "price": "",
-       "mileage": "",
        "bodyType": "",
-       "fuelType": "",
-       "transmission": "",
-       "description": "",
+       "color": "",
        "confidence": 0.0
      }
 
@@ -105,32 +103,6 @@ export async function processImageSearch(file) {
     const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
     try {
       const carDetails = JSON.parse(cleanedText);
-
-      // Validate the response format
-      const requiredFields = [
-        "make",
-        "model",
-        "year",
-        "color",
-        "bodyType",
-        "price",
-        "mileage",
-        "fuelType",
-        "transmission",
-        "description",
-        "confidence",
-      ];
-
-      const missingFields = requiredFields.filter(
-        (field) => !(field in carDetails)
-      );
-
-      if (missingFields.length > 0) {
-        throw new Error(
-          `AI response missing required fields: ${missingFields.join(", ")}`
-        );
-      }
-
       // Return success response with data
       return {
         success: true,
@@ -144,5 +116,7 @@ export async function processImageSearch(file) {
         error: "Failed to parse AI response",
       };
     }
-  } catch (error) {}
+  } catch (error) {
+    throw new Error("AI Search Error : " + error.message);
+  }
 }

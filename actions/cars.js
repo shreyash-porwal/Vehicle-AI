@@ -244,15 +244,15 @@ export async function getCars(search = "") {
     });
 
     const serializedCars = cars.map(serializedCarData);
-    return{
-      success : true,
-      data : serializedCars
+    return {
+      success: true,
+      data: serializedCars,
     };
   } catch (error) {
-    console.log("Error fetching cars : ",error);
-    return{
-      success : false,
-      data : error.message
+    console.log("Error fetching cars : ", error);
+    return {
+      success: false,
+      data: error.message,
     };
   }
 }
@@ -356,6 +356,56 @@ export async function updateCarStatus(id, { status, featured }) {
     };
   } catch (error) {
     console.error("Error updating car status:", error);
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+}
+
+export async function getSavedCars() {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return {
+        success: false,
+        error: "Unauthorized",
+      };
+    }
+
+    const user = await db.user.findUnique({
+      where: {
+        clerkUserId: userId,
+      },
+    });
+
+    if (!user) {
+      return {
+        success: false,
+        error: "User not found",
+      };
+    }
+
+    const savedCars = await db.userSavedCar.findMany({
+      where: {
+        userId: user.id,
+      },
+      include: {
+        car: true,
+      },
+      orderBy: {
+        savedAt: "desc",
+      },
+    });
+    // Extract and format car data
+    const cars = savedCars.map((saved) => serializedCarData(saved.car));
+    
+    return {
+      success: true,
+      data: cars,
+    };
+  } catch (error) {
+    console.error("Error fetching saved car ", error);
     return {
       success: false,
       error: error.message,
